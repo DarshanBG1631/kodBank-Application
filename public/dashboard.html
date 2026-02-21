@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kodbank - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1 class="brand">Kodbank</h1>
+            <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+        </div>
+
+        <div class="dashboard-content">
+            <div class="welcome-section">
+                <h2>Welcome to Your Dashboard</h2>
+                <p>Manage your finances with ease</p>
+            </div>
+
+            <div class="balance-section">
+                <button id="checkBalanceBtn" class="btn btn-primary btn-large">
+                    <span class="btn-icon">💰</span>
+                    Check Balance
+                </button>
+
+                <div id="balanceDisplay" class="balance-display hidden">
+                    <div class="balance-card">
+                        <h3>Your Balance</h3>
+                        <p class="balance-amount"><span id="balanceValue">0.00</span></p>
+                        <p class="balance-label">Available Funds</p>
+                    </div>
+                </div>
+
+                <div id="errorDisplay" class="error-display hidden">
+                    <p id="errorMessage"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confetti Container -->
+        <div id="confettiContainer" class="confetti-container"></div>
+    </div>
+
+    <script>
+        // Check if user is logged in
+        const token = localStorage.getItem('authToken') || document.cookie.includes('authToken=');
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        // Check Balance Button
+        document.getElementById('checkBalanceBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/check-balance', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show balance
+                    document.getElementById('balanceValue').textContent = data.balance.toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+
+                    document.getElementById('balanceDisplay').classList.remove('hidden');
+                    document.getElementById('errorDisplay').classList.add('hidden');
+
+                    // Trigger confetti animation
+                    createConfetti();
+                } else {
+                    document.getElementById('errorMessage').textContent = data.message;
+                    document.getElementById('errorDisplay').classList.remove('hidden');
+                    document.getElementById('balanceDisplay').classList.add('hidden');
+
+                    if (data.message.includes('expired') || data.message.includes('Invalid')) {
+                        localStorage.removeItem('authToken');
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 2000);
+                    }
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Failed to fetch balance. Please try again.';
+                document.getElementById('errorDisplay').classList.remove('hidden');
+                document.getElementById('balanceDisplay').classList.add('hidden');
+            }
+        });
+
+        // Logout Button
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+        });
+
+        // Confetti Animation
+        function createConfetti() {
+            const container = document.getElementById('confettiContainer');
+            container.innerHTML = '';
+
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
+            const shapes = ['●', '■', '▲', '★', '♦', '♥'];
+
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.textContent = shapes[Math.floor(Math.random() * shapes.length)];
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.color = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.fontSize = (Math.random() * 15 + 10) + 'px';
+
+                container.appendChild(confetti);
+            }
+
+            // Remove confetti after animation
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 4000);
+        }
+    </script>
+</body>
+
+</html>
